@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
       - name: magento2
-        image: kube/php:7.2-fpm
+        image: shiftedreality/magento-k8s-deep-dive:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
