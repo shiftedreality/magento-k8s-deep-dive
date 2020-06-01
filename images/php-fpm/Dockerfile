@@ -1,0 +1,48 @@
+FROM php:7.2-fpm
+
+# Install dependencies
+RUN apt-get update \
+  && apt-get install -y \
+    libfreetype6-dev \
+    libicu-dev \
+    libjpeg62-turbo-dev \
+    libmcrypt-dev \
+    libpng-dev \
+    libxslt1-dev \
+    sendmail-bin \
+    sendmail \
+    sudo \
+    net-tools \
+    nano
+
+# Configure the gd library
+RUN docker-php-ext-configure \
+  gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/
+
+# Install required PHP extensions
+RUN docker-php-ext-install \
+  dom \
+  gd \
+  intl \
+  mbstring \
+  pdo_mysql \
+  xsl \
+  zip \
+  bcmath \
+  soap
+
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+RUN pecl install -o -f xdebug
+
+RUN echo ";zend_extension=xdebug.so" >> /usr/local/etc/php/conf.d/xdebug.ini
+RUN echo "xdebug.remote_enable=1" >> /usr/local/etc/php/conf.d/xdebug.ini
+RUN echo "xdebug.remote_autostart=1" >> /usr/local/etc/php/conf.d/xdebug.ini
+RUN echo "xdebug.idekey=PHPSTORM" >> /usr/local/etc/php/conf.d/xdebug.ini
+
+COPY etc/php-fpm.ini /usr/local/etc/php/conf.d/zz-magento.ini
+COPY etc/php-fpm.conf /usr/local/etc/
+
+RUN mkdir -p /var/www/html
+RUN echo "Hello world" >> /var/www/html/index.html
+
+CMD ["php-fpm", "-R"]

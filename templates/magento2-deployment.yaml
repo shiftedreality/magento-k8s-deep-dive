@@ -1,0 +1,85 @@
+# The following code is for creating single-instance of magento2 Deployment and Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: magento2
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: magento2
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: nginx-config
+data:
+  nginx.conf: |
+    events {
+      worker_connections 1024;
+    }
+    http {
+      include mime.types;
+      default_type application/octet-stream;
+      sendfile on;
+      keepalive_timeout 65;
+      upstream fastcgi_backend {
+        server 127.0.0.1:9000;
+      }
+      server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name _;
+        location / {
+            set $MAGE_ROOT /var/www/html;
+            root /var/www/html
+        }
+      }
+    }
+---
+#This it to deploy magento2 container to Kubernetes
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: magento2
+  labels:
+    app: magento2
+spec:
+  selector:
+    matchLabels:
+      app: magento2
+      tier: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: magento2
+        tier: frontend
+    spec:
+      containers:
+      - name: magento2
+        image: kube/php:7.2-fpm
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        # volumeMounts:
+        # - name: code
+        #   mountPath: /var/www/html
+      - name: nginx
+        image: nginx:1.9
+        volumeMounts:
+        # - name: code
+        #   mountPath: /var/www/html
+        - name: nginx-config-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      volumes:
+#      - name: code
+#        persistentVolumeClaim:
+#          claimName: sources-volume-claim
+      - name: nginx-config-volume
+        configMap:
+          name: nginx-config
